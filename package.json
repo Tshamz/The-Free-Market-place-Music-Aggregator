@@ -1,0 +1,32 @@
+{
+  "name": "The-Free-Market-place-Music-Aggregator",
+  "version": "1.0.0",
+  "description": "A music aggregator",
+  "main": "index.js",
+  "dependencies": {
+    "browser-sync": "^2.8.2"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.8.2",
+    "gulp": "^3.9.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tshamz/The-Free-Market-place-Music-Aggregator.git"
+  },
+  "keywords": [
+    "Music",
+    "Spotify",
+    "Monster-Trucks",
+    "Node"
+  ],
+  "author": "Tyler Shambora",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Tshamz/The-Free-Market-place-Music-Aggregator/issues"
+  },
+  "homepage": "https://github.com/Tshamz/The-Free-Market-place-Music-Aggregator"
+}
