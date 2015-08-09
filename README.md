@@ -1,35 +1,36 @@
-# Spotify Accounts Authentication Examples
+# node-js-getting-started
 
-This project contains basic demos showing the different OAuth 2.0 flows for [authenticating against the Spotify Web API](https://developer.spotify.com/web-api/authorization-guide/).
+A barebones Node.js app using [Express 4](http://expressjs.com/).
 
-These examples cover:
+This application supports the [Getting Started with Node on Heroku](https://devcenter.heroku.com/articles/getting-started-with-nodejs) article - check it out.
 
-* Authorization Code flow
-* Client Credentials flow
-* Implicit Grant flow
+## Running Locally
 
-## Installation
+Make sure you have [Node.js](http://nodejs.org/) and the [Heroku Toolbelt](https://toolbelt.heroku.com/) installed.
 
-These examples run on Node.js. On [its website](http://www.nodejs.org/download/) you can find instructions on how to install it. You can also follow [this gist](https://gist.github.com/isaacs/579814) for a quick and easy way to install Node.js and npm.
+```sh
+$ git clone git@github.com:heroku/node-js-getting-started.git # or clone your own fork
+$ cd node-js-getting-started
+$ npm install
+$ npm start
+```
 
-Once installed, clone the repository and install its dependencies running:
+Your app should now be running on [localhost:5000](http://localhost:5000/).
 
-    $ npm install
+## Deploying to Heroku
 
-## Running the examples
-In order to run the different examples, open the folder with the name of the flow you want to try out, and run its `app.js` file. For instance, to run the Authorization Code example do:
+```
+$ heroku create
+$ git push heroku master
+$ heroku open
+```
 
-    $ cd authorization_code
-    $ node app.js
+## Documentation
 
-Then, open `http://localhost:8888` in a browser.
+For more information about using Node.js on Heroku, see these Dev Center articles:
 
-### Using your own credentials
-The examples contains a working client ID and secret key. Note, however, that they might be rate limited if they are used frequently. If you are planning to create an application, we recommend you register your app and get your own credentials instead of using the ones in this project.
-
-Go to [My Applications on Spotify Developer](https://developer.spotify.com/my-applications) and create your application. For the examples, we registered these Redirect URIs:
-
-* http://localhost:8888 (needed for the implicit grant flow)
-* http://localhost:8888/callback
-
-Once you have created your app, replace the `client_id`, `redirect_uri` and `client_secret` in the examples with the ones you get from My Applications.
+- [Getting Started with Node.js on Heroku](https://devcenter.heroku.com/articles/getting-started-with-nodejs)
+- [Heroku Node.js Support](https://devcenter.heroku.com/articles/nodejs-support)
+- [Node.js on Heroku](https://devcenter.heroku.com/categories/nodejs)
+- [Best Practices for Node.js Development](https://devcenter.heroku.com/articles/node-best-practices)
+- [Using WebSockets on Heroku with Node.js](https://devcenter.heroku.com/articles/node-websockets)
