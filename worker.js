@@ -50,17 +50,17 @@ function init() {
       musicData.tracks.forEach(function(track, index) {
         promises.push(spotifyApi.searchTracks(track.artist+ ' ' +track.title).then(function(data) {
           var results = data.body.tracks.items;
-          loopOne:
+          mainLoop:
           for (var i = 0; i < results.length; i++) {
-            var handelizedTitleResult = results[i].name.toLowerCase();
-            var handelizedTitleQuery = track.title.toLowerCase();
-            if (handelizedTitleResult.indexOf(handelizedTitleQuery > -1)) {
-              for (var n = 0; n < results[i].artists.length; n++) {
-                var handelizedArtistResult = results[i].artists[n].name.toLowerCase();
-                var handelizedArtistQuery = track.artist.toLowerCase();
-                if (handelizedArtistResult.indexOf(handelizedArtistQuery > -1)) {
+            for (var n = 0; n < results[i].artists.length; n++) {
+              var handelizedTitleResult = results[i].name.toLowerCase();
+              var handelizedTitleQuery = track.title.toLowerCase();
+              var handelizedArtistResult = results[i].artists[n].name.toLowerCase();
+              var handelizedArtistQuery = track.artist.toLowerCase();
+              if (handelizedArtistResult.indexOf(handelizedArtistQuery) > -1 && handelizedArtistResult.indexOf('araoke') === -1) {
+                if (handelizedTitleResult.indexOf(handelizedTitleQuery) > -1 && handelizedTitleResult.indexOf('araoke') === -1) {
                   uris.push(results[i].uri);
-                  break loopOne;
+                  break mainLoop;
                 }
               }
             }
