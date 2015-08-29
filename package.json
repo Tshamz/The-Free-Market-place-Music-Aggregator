@@ -2,31 +2,34 @@
   "name": "The-Free-Market-place-Music-Aggregator",
   "version": "1.0.0",
   "description": "A music aggregator",
-  "main": "index.js",
-  "dependencies": {
-    "browser-sync": "^2.8.2"
-  },
-  "devDependencies": {
-    "browser-sync": "^2.8.2",
-    "gulp": "^3.9.0"
-  },
+  "main": "worker.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node worker.js"
+  },
+  "dependencies": {
+    "cheerio": "^0.19.0",
+    "ejs": "^2.3.1",
+    "express": "~4.9.x",
+    "moment": "^2.10.6",
+    "promise": "^7.0.4",
+    "restler": "^3.3.0",
+    "spotify-web-api-node": "^2.1.0"
+  },
+  "engines": {
+    "node": "0.12.2"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Tshamz/The-Free-Market-place-Music-Aggregator.git"
+    "url": "https://github.com/heroku/node-js-getting-started"
   },
   "keywords": [
+    "node",
+    "heroku",
     "Music",
     "Spotify",
     "Monster-Trucks",
     "Node"
   ],
   "author": "Tyler Shambora",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/Tshamz/The-Free-Market-place-Music-Aggregator/issues"
-  },
-  "homepage": "https://github.com/Tshamz/The-Free-Market-place-Music-Aggregator"
+  "license": "MIT"
 }

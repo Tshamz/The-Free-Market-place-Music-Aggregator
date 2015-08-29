@@ -1,0 +1,7 @@
+{
+  "name": "Marketplace Music Aggregator",
+  "description": "Scrapes the Marketplace website for the music featued on the episodes and then adds to or updates Spotify playlists with the tracks",
+  "repository": "https://github.com/heroku/node-js-getting-started",
+  "logo": "http://tylershambora.com/images/logo-icon-small.png",
+  "keywords": ["node", "spotify", "heroku"]
+}
