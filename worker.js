@@ -1,8 +1,19 @@
-var promise = require('promise');
-var restler = require('restler');
-var cheerio = require('cheerio');
-var moment  = require('moment');
+// Config ===============================================
+
+var Q            = require('q');
+var request      = require('request');
+var promise      = require('promise');
+var cheerio      = require('cheerio');
+var moment       = require('moment');
+
 var SpotifyWebApi = require('spotify-web-api-node');
+
+// var spotifyApi = new SpotifyWebApi({
+//     "clientId": process.env.SPOTIFY_CLIENT_ID,
+//     "clientSecret": process.env.SPOTIFY_CLIENT_SECRET,
+//     "redirectUri": process.env.SPOTIFY_REDIRECT_URI,
+//     'refreshToken' : process.env.SPOTIFY_REFRESH_TOKEN
+// });
 
 var spotifyApi = new SpotifyWebApi({
     "clientId": "e5cede67c620456b9ab00fea9e745ab9",
@@ -10,6 +21,15 @@ var spotifyApi = new SpotifyWebApi({
     "redirectUri": "http://dev.tylershambora.com/music",
     'refreshToken' : "AQCYCBF1gEk8VEDB_97lCBerjexbtfyH9MSFCVwyeDjgZF3dj3ntP4RIfR1TiqWNybGinQ0OEwnyqmpqt8JBv59DNuCtSpbQ50Q5I432uZGpRvnWkzT8kt8VClPYRE46MfI"
 });
+
+// var playlists = {
+//   "new": {
+//     "id": process.env.SPOTIFY_ALL_PLAYLIST_ID
+//   },
+//   "all": {
+//     "id": process.env.SPOTIFY_ALL_PLAYLIST_ID
+//   }
+// };
 
 var playlists = {
   "new": {
@@ -20,61 +40,63 @@ var playlists = {
   }
 };
 
-function parseHtml(html) {
-  var $ = cheerio.load(html);
-  var tracks = [];
-  var date = $('.grouped-title').first().text();
-  $('.view-content').children().first().nextUntil('.grouped-title').each(function(index, element) {
-    var artist = $(element).find('.field-name-field-song-artist .field-item, .creator').text();
-    var title = $(element).find('.field-name-field-song-title .field-item, .product-title').text();
-    if (title.indexOf(' [Explicit]') > -1) {
-      title = title.replace(' [Explicit]', '');
-    }
-    tracks.push({'artist': artist, 'title': title});
-  });
-  return {"date": date, "tracks": tracks};
-}
+// Helper Functions ===============================================
 
-function init() {
-  var uris = [];
-  restler.get('http://www.marketplace.org/latest-music').on('success', function(data, response) {
-    var musicData = parseHtml(data);
-    // var newContent = checkUpdatedTime(parsedHtml.date);
-    // if (!newContent) {
-    //   return false;
-    // }
-    spotifyApi.refreshAccessToken().then(function(data) {
-      return spotifyApi.setAccessToken(data.body.access_token);
-    }).then(function() {
-      var promises = [];
-      musicData.tracks.forEach(function(track, index) {
-        promises.push(spotifyApi.searchTracks(track.artist+ ' ' +track.title).then(function(data) {
-          var results = data.body.tracks.items;
-          mainLoop:
-          for (var i = 0; i < results.length; i++) {
-            for (var n = 0; n < results[i].artists.length; n++) {
-              var handelizedTitleResult = results[i].name.toLowerCase();
-              var handelizedTitleQuery = track.title.toLowerCase();
-              var handelizedArtistResult = results[i].artists[n].name.toLowerCase();
-              var handelizedArtistQuery = track.artist.toLowerCase();
-              if (handelizedArtistResult.indexOf(handelizedArtistQuery) > -1 && handelizedArtistResult.indexOf('araoke') === -1) {
-                if (handelizedTitleResult.indexOf(handelizedTitleQuery) > -1 && handelizedTitleResult.indexOf('araoke') === -1) {
-                  uris.push(results[i].uri);
-                  break mainLoop;
-                }
-              }
-            }
-          }
-        }));
+var refreshAccessToken = function () {
+  var deferred = Q.defer();
+  spotifyApi.refreshAccessToken().then(function(data) {
+    spotifyApi.setAccessToken(data.body.access_token);
+    deferred.resolve();
+  }, function(err) {
+    console.log('Could not refresh the token!', err.message);
+    deferred.reject(new Error(err));
+  });
+  return deferred.promise;
+};
+
+var getSongs = function () {
+  var deferred = Q.defer();
+  request('http://www.marketplace.org/latest-music', function(error, response, body) {
+    if (error) {
+      deferred.reject(new Error(error));
+    } else if (!error && response.statusCode == 200) {
+      var $ = cheerio.load(body);
+      var tracks = [];
+      var date = $('.river--hed').first().find('a').text();
+      var parseableDate = date.replace('Marketplace for ', '');
+
+      $('.episode-music').first().children().each(function () {
+        var title = $(this).find('.episode-music-group .episode-music-title').text().replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
+        var artist = $(this).find('.episode-music-group .episode-music-artist').text();
+        tracks.push({'artist': artist, 'title': title});
       });
-      return promise.all(promises);
-    }).then(function() {
-      spotifyApi.addTracksToPlaylist('tshamz', playlists.all.id, uris);
-      return spotifyApi.replaceTracksInPlaylist('tshamz', playlists.new.id, uris);
-    }).catch(function(error) {
-      console.error(error);
+      deferred.resolve({"date": parseableDate, "tracks": tracks});
+    }
+  });
+  return deferred.promise;
+};
+
+var addSongs = function(musicData) {
+  spotifyApi.replaceTracksInPlaylist('tshamz', playlists.new.id, []).then(function () {
+    musicData.tracks.forEach(function(track, index) {
+      spotifyApi.searchTracks(track.title + ' ' + track.artist).then(function(data) {
+        var results = data.body.tracks.items;
+        for (var i = 0; i < results.length; i++) {
+          var isArtist = results[i].artists.map(function (artist) {
+            return artist.name.toLowerCase().replace(' ', '-');
+          }).indexOf(track.artist.toLowerCase());
+          var isTrack = results[i].name.toLowerCase().indexOf(track.title.toLowerCase());
+          if (isArtist && isTrack) {
+            spotifyApi.addTracksToPlaylist('tshamz', playlists.new.id, results[i].uri)
+            break;
+          }
+        }
+      });
     });
   });
-}
+};
 
-init();
+// Init ===============================================
+
+Q.fcall(refreshAccessToken).then(getSongs).then(addSongs);
+
