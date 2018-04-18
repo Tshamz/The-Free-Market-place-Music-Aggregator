@@ -1,102 +1,89 @@
-// Config ===============================================
+const moment        = require('moment');
+const cheerio       = require('cheerio');
+const fetch         = require('node-fetch');
+const SpotifyWebApi = require('spotify-web-api-node');
 
-var Q            = require('q');
-var request      = require('request');
-var promise      = require('promise');
-var cheerio      = require('cheerio');
-var moment       = require('moment');
+const now = moment();
+const then = moment().subtract(1, 'week');
 
-var SpotifyWebApi = require('spotify-web-api-node');
+const USER_ID = 'tshamz';
+const PLAYLIST_ID = '2aYZPU81RDkXbounr6WD6W';
 
-// var spotifyApi = new SpotifyWebApi({
-//     "clientId": process.env.SPOTIFY_CLIENT_ID,
-//     "clientSecret": process.env.SPOTIFY_CLIENT_SECRET,
-//     "redirectUri": process.env.SPOTIFY_REDIRECT_URI,
-//     'refreshToken' : process.env.SPOTIFY_REFRESH_TOKEN
-// });
-
-var spotifyApi = new SpotifyWebApi({
-    "clientId": "e5cede67c620456b9ab00fea9e745ab9",
-    "clientSecret": "508425b34378495182459128bf513d8c",
-    "redirectUri": "http://dev.tylershambora.com/music",
-    'refreshToken' : "AQCYCBF1gEk8VEDB_97lCBerjexbtfyH9MSFCVwyeDjgZF3dj3ntP4RIfR1TiqWNybGinQ0OEwnyqmpqt8JBv59DNuCtSpbQ50Q5I432uZGpRvnWkzT8kt8VClPYRE46MfI"
+const spotifyApi = new SpotifyWebApi({
+  "clientId": process.env.SPOTIFY_CLIENT_ID,
+  "clientSecret": process.env.SPOTIFY_CLIENT_SECRET,
+  "redirectUri": process.env.SPOTIFY_REDIRECT_URI,
+  'refreshToken' : process.env.SPOTIFY_REFRESH_TOKEN
 });
 
-// var playlists = {
-//   "new": {
-//     "id": process.env.SPOTIFY_ALL_PLAYLIST_ID
-//   },
-//   "all": {
-//     "id": process.env.SPOTIFY_ALL_PLAYLIST_ID
-//   }
-// };
+const refreshAccessToken = async () => {
+  const { body: { access_token: accessToken } } = await spotifyApi.refreshAccessToken();
+  spotifyApi.setAccessToken(accessToken);
+};
 
-var playlists = {
-  "new": {
-    "id": "1vnwLjkLHCuyMcrYu3GUyF"
-  },
-  "all": {
-    "id": "00qHC2E0lX9Gcpyo2nobl8"
+const fetchEpisodes = async () => {
+  const html = await fetch('http://www.marketplace.org/latest-music').then(res => res.text());
+  const $ = cheerio.load(html);
+  return $('.episode-music').map((i, episode) => {
+    const dateParts = $(episode).prev().text().split(':')[0].split('/');
+    const songs = $(episode).children().map((i, track) => {
+      const title = $(track).find('.episode-music-title').text().replace(/\[.*?\]/g, '').trim();
+      const artist = $(track).find('.episode-music-artist').text().replace(' & ', ' ');
+      return { title, artist };
+    }).get();
+    return { date: `${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`, songs };
+  }).get();
+};
+
+const getSongs = episodes => {
+  return episodes
+    .filter(episode => moment(episode.date).isBetween(then, now, 'day', []))
+    .reduce((songs, episode) => [ ...songs, ...episode.songs ], []).sort();
+};
+
+const searchSong = (title, artist, query) => {
+  return spotifyApi.searchTracks(query, { limit: 50 })
+    .then(({ body: { tracks } }) => ({ title, artist, tracks }));
+};
+
+const searchSongs = songs => {
+  const searches = songs.map(({ title, artist }) => searchSong(title, artist, `track:${title} artist:${artist}`));
+  return Promise.all(searches);
+};
+
+const searchForEmptyResults = results => {
+  const searches = results
+    .filter(result => result.tracks.total === 0)
+    .map(result => {
+      const title = result.title.replace('(Album Version)', '').trim();
+      searchSong(title, artist, `track:${title}`)
+    });
+  return Promise.all(searches);
+  // const tracks = results.reduce((ids, { title, artist, tracks }) => {
+  //   if (tracks.total === 0) {
+  //     const query = `track:${title}`;
+  //     return { promises: [ ...promises, searchSong(title, artist, query) ], ids: [ ...ids ] };
+  //   } else {
+  //     return { promises: [ ...promises ], ids: [ ...ids, tracks.items[0].uri ] };
+  //   }
+  // }, { promises: [], ids: [] });
+};
+
+const addSongs = async results => {
+  const uris = results.reduce((ids, {tracks}) => (tracks.total > 0) ? [ ...ids, tracks.items[0].uri ] : [ ...ids ], []);
+  return spotifyApi.replaceTracksInPlaylist(USER_ID, PLAYLIST_ID, uris);
+};
+
+const init = async () => {
+  if (now.isoWeekday() === 3) {
+    await refreshAccessToken();
+    const episodes = await fetchEpisodes();
+    const songs = getSongs(episodes);
+    const results = await searchSongs(songs);
+    // const moreResults = await searchForEmptyResults(results);
+    // console.log(moreResults);
+    addSongs(results);
   }
 };
 
-// Helper Functions ===============================================
-
-var refreshAccessToken = function () {
-  var deferred = Q.defer();
-  spotifyApi.refreshAccessToken().then(function(data) {
-    spotifyApi.setAccessToken(data.body.access_token);
-    deferred.resolve();
-  }, function(err) {
-    console.log('Could not refresh the token!', err.message);
-    deferred.reject(new Error(err));
-  });
-  return deferred.promise;
-};
-
-var getSongs = function () {
-  var deferred = Q.defer();
-  request('http://www.marketplace.org/latest-music', function(error, response, body) {
-    if (error) {
-      deferred.reject(new Error(error));
-    } else if (!error && response.statusCode == 200) {
-      var $ = cheerio.load(body);
-      var tracks = [];
-      var date = $('.river--hed').first().find('a').text();
-      var parseableDate = date.replace('Marketplace for ', '');
-
-      $('.episode-music').first().children().each(function () {
-        var title = $(this).find('.episode-music-group .episode-music-title').text().replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
-        var artist = $(this).find('.episode-music-group .episode-music-artist').text();
-        tracks.push({'artist': artist, 'title': title});
-      });
-      deferred.resolve({"date": parseableDate, "tracks": tracks});
-    }
-  });
-  return deferred.promise;
-};
-
-var addSongs = function(musicData) {
-  spotifyApi.replaceTracksInPlaylist('tshamz', playlists.new.id, []).then(function () {
-    musicData.tracks.forEach(function(track, index) {
-      spotifyApi.searchTracks(track.title + ' ' + track.artist).then(function(data) {
-        var results = data.body.tracks.items;
-        for (var i = 0; i < results.length; i++) {
-          var isArtist = results[i].artists.map(function (artist) {
-            return artist.name.toLowerCase().replace(' ', '-');
-          }).indexOf(track.artist.toLowerCase());
-          var isTrack = results[i].name.toLowerCase().indexOf(track.title.toLowerCase());
-          if (isArtist && isTrack) {
-            spotifyApi.addTracksToPlaylist('tshamz', playlists.new.id, results[i].uri)
-            break;
-          }
-        }
-      });
-    });
-  });
-};
-
-// Init ===============================================
-
-Q.fcall(refreshAccessToken).then(getSongs).then(addSongs);
-
+init();

@@ -8,21 +8,12 @@
   },
   "dependencies": {
     "cheerio": "^0.19.0",
-    "ejs": "^2.3.1",
-    "express": "~4.9.x",
-    "moment": "^2.10.6",
-    "promise": "^7.0.4",
-    "q": "^1.4.1",
-    "request": "^2.79.0",
-    "restler": "^3.3.0",
-    "spotify-web-api-node": "^2.1.0"
+    "moment": "^2.22.1",
+    "node-fetch": "^2.1.2",
+    "spotify-web-api-node": "^3.0.0"
   },
   "engines": {
-    "node": "0.12.2"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/heroku/node-js-getting-started"
+    "node": "8.6.0"
   },
   "keywords": [
     "node",
