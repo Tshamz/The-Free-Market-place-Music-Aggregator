@@ -6,8 +6,8 @@ const SpotifyWebApi = require('spotify-web-api-node');
 const now = moment();
 const then = moment().subtract(1, 'week');
 
-const USER_ID = 'tshamz';
-const PLAYLIST_ID = '2aYZPU81RDkXbounr6WD6W';
+const user = process.env.SPOTIFY_USER_ID;
+const playlist = process.env.SPOTIFY_PLAYLIST_ID;
 
 const spotifyApi = new SpotifyWebApi({
   "clientId": process.env.SPOTIFY_CLIENT_ID,
@@ -21,68 +21,59 @@ const refreshAccessToken = async () => {
   spotifyApi.setAccessToken(accessToken);
 };
 
+const cleanUpMeta = meta => {
+  return meta
+    .replace(/\[.*?\]/g, '')
+    .replace(' & ', ' ')
+    .replace('(Album Version)', '')
+    .replace('(Single Edit)', '')
+    .replace('(Radio Edit)', '')
+    .replace('- Single', '')
+    .trim();
+};
+
 const fetchEpisodes = async () => {
   const html = await fetch('http://www.marketplace.org/latest-music').then(res => res.text());
   const $ = cheerio.load(html);
   return $('.episode-music').map((i, episode) => {
     const dateParts = $(episode).prev().text().split(':')[0].split('/');
-    const songs = $(episode).children().map((i, track) => {
-      const title = $(track).find('.episode-music-title').text().replace(/\[.*?\]/g, '').trim();
-      const artist = $(track).find('.episode-music-artist').text().replace(' & ', ' ');
+    const tracks = $(episode).children().map((i, track) => {
+      const title = cleanUpMeta($(track).find('.episode-music-title').text());
+      const artist = cleanUpMeta($(track).find('.episode-music-artist').text());
       return { title, artist };
     }).get();
-    return { date: `${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`, songs };
+    return { date: `${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`, tracks };
   }).get();
 };
 
-const getSongs = episodes => {
+const getTracks = episodes => {
   return episodes
     .filter(episode => moment(episode.date).isBetween(then, now, 'day', []))
-    .reduce((songs, episode) => [ ...songs, ...episode.songs ], []).sort();
+    .reduce((tracks, episode) => [ ...tracks, ...episode.tracks ], []).sort();
 };
 
-const searchSong = (title, artist, query) => {
+const searchTrack = (title, artist, query, deep) => {
   return spotifyApi.searchTracks(query, { limit: 50 })
     .then(({ body: { tracks } }) => ({ title, artist, tracks }));
 };
 
-const searchSongs = songs => {
-  const searches = songs.map(({ title, artist }) => searchSong(title, artist, `track:${title} artist:${artist}`));
+const searchTracks = tracks => {
+  const searches = tracks.map(({ title, artist }) => searchTrack(title, artist, `track:${title} artist:${artist}`, true));
   return Promise.all(searches);
 };
 
-const searchForEmptyResults = results => {
-  const searches = results
-    .filter(result => result.tracks.total === 0)
-    .map(result => {
-      const title = result.title.replace('(Album Version)', '').trim();
-      searchSong(title, artist, `track:${title}`)
-    });
-  return Promise.all(searches);
-  // const tracks = results.reduce((ids, { title, artist, tracks }) => {
-  //   if (tracks.total === 0) {
-  //     const query = `track:${title}`;
-  //     return { promises: [ ...promises, searchSong(title, artist, query) ], ids: [ ...ids ] };
-  //   } else {
-  //     return { promises: [ ...promises ], ids: [ ...ids, tracks.items[0].uri ] };
-  //   }
-  // }, { promises: [], ids: [] });
-};
-
-const addSongs = async results => {
+const addTracks = async results => {
   const uris = results.reduce((ids, {tracks}) => (tracks.total > 0) ? [ ...ids, tracks.items[0].uri ] : [ ...ids ], []);
-  return spotifyApi.replaceTracksInPlaylist(USER_ID, PLAYLIST_ID, uris);
+  return spotifyApi.replaceTracksInPlaylist(user, playlist, uris);
 };
 
 const init = async () => {
   if (now.isoWeekday() === 3) {
     await refreshAccessToken();
     const episodes = await fetchEpisodes();
-    const songs = getSongs(episodes);
-    const results = await searchSongs(songs);
-    // const moreResults = await searchForEmptyResults(results);
-    // console.log(moreResults);
-    addSongs(results);
+    const tracks = getTracks(episodes);
+    const results = await searchTracks(tracks);
+    addTracks(results);
   }
 };
 
