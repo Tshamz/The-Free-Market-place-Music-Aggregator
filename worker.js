@@ -3,6 +3,7 @@ const cheerio       = require('cheerio');
 const fetch         = require('node-fetch');
 const SpotifyWebApi = require('spotify-web-api-node');
 
+
 const now = moment();
 const then = moment().subtract(1, 'week');
 
