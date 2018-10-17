@@ -17,6 +17,7 @@ const spotifyApi = new SpotifyWebApi({
 });
 
 const refreshAccessToken = async () => {
+  const refresh = await spotifyApi.refreshAccessToken();
   const { body: { access_token: accessToken } } = await spotifyApi.refreshAccessToken();
   spotifyApi.setAccessToken(accessToken);
 };
@@ -62,6 +63,18 @@ const searchTracks = tracks => {
   return Promise.all(searches);
 };
 
+const backupPlaylist = async () => {
+  try {
+    const backupPlaylistTitle = `[${then.format('MM-DD-YY')}]`;
+    console.log(backupPlaylistTitle);
+    const backupTracks = await spotifyApi.getPlaylistTracks(user, playlist);
+    console.log(backupTracks);
+    // const backupPlaylist = await spotifyApi.createPlaylist(user, backupPlaylistTitle);
+  } catch (err) {
+    console.log(err);
+  }
+};
+
 const addTracks = async results => {
   const uris = results.reduce((ids, {tracks}) => (tracks.total > 0) ? [ ...ids, tracks.items[0].uri ] : [ ...ids ], []);
   return spotifyApi.replaceTracksInPlaylist(user, playlist, uris);
@@ -73,6 +86,7 @@ const init = async () => {
     const episodes = await fetchEpisodes();
     const tracks = getTracks(episodes);
     const results = await searchTracks(tracks);
+    // await backupPlaylist();
     addTracks(results);
   }
 };
